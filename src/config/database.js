@@ -11,12 +11,13 @@ const pool = new Pool({
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Probar la conexión
 pool.connect((err, client, release) => {
     if (err) {
-        return console.error('Error conectando a la base de datos:', err.stack);
+        return console.error('❌ Error conectando a la base de datos:', err.message);
     }
     console.log('✅ Conectado a PostgreSQL exitosamente');
     release();
