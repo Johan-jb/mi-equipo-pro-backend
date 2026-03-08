@@ -24,9 +24,9 @@ app.use(express.json({ type: 'application/json' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(helmet());
 
-// Configuración CORS
+// Configuración CORS usando variable de entorno
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
 
