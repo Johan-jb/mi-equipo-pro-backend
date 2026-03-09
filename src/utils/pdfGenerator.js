@@ -1,182 +1,170 @@
-const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+const PdfPrinter = require('pdfmake');
 const QRCode = require('qrcode');
-const path = require('path');
 
 class PDFGenerator {
     constructor() {
-        this.chartWidth = 600;
-        this.chartHeight = 300;
-        this.chartJSNodeCanvas = new ChartJSNodeCanvas({
-            width: this.chartWidth,
-            height: this.chartHeight,
-            backgroundColour: 'white'
-        });
+        // Definir fuentes para pdfmake
+        const fonts = {
+            Roboto: {
+                normal: 'Helvetica',
+                bold: 'Helvetica-Bold',
+                italics: 'Helvetica-Oblique',
+                bolditalics: 'Helvetica-BoldOblique'
+            }
+        };
+        this.printer = new PdfPrinter(fonts);
     }
 
     async generarInforme(jugador, evaluaciones, habilidades) {
-        // Crear el contenido del PDF
-        let contenido = this.generarCabecera(jugador);
-        
-        contenido += this.generarDatosPersonales(jugador);
-        
-        if (habilidades) {
-            const radarChart = await this.generarRadarChart(habilidades);
-            contenido += this.agregarImagen(radarChart, 'Radar de Habilidades');
-        }
+        // Preparar el contenido del documento
+        const docDefinition = {
+            content: [
+                // Encabezado
+                { text: 'SportMetrics Pro - Informe de Rendimiento', style: 'header' },
+                { text: `${jugador.nombre} ${jugador.apellido}`, style: 'subheader' },
+                { text: `Club: ${jugador.club_nombre || 'No especificado'}`, style: 'normal' },
+                { text: `Fecha: ${new Date().toLocaleDateString('es-ES')}`, style: 'normal' },
+                { text: '\n' },
 
-        if (evaluaciones.length > 0) {
-            const evolucionChart = await this.generarEvolucionChart(evaluaciones);
-            contenido += this.agregarImagen(evolucionChart, 'Evolución del Rendimiento');
-            
-            contenido += this.generarTablaEvaluaciones(evaluaciones);
-        } else {
-            contenido += '<p>No hay evaluaciones registradas para este jugador.</p>';
-        }
-
-        // Generar QR code
-        const qrData = `https://sportmetrics-pro.com/jugador/${jugador.id_jugador}`;
-        const qrImage = await QRCode.toDataURL(qrData);
-        contenido += this.agregarImagenFromBase64(qrImage, 'Perfil Digital');
-
-        contenido += this.generarPie();
-
-        // Aquí usarías una librería como pdfkit para generar el PDF real
-        // Por simplicidad, retornamos un buffer simulado
-        return Buffer.from(contenido);
-    }
-
-    generarCabecera(jugador) {
-        return `
-            <h1>SportMetrics Pro - Informe de Rendimiento</h1>
-            <h2>${jugador.nombre} ${jugador.apellido}</h2>
-            <p>Club: ${jugador.club_nombre || 'No especificado'}</p>
-            <p>Fecha: ${new Date().toLocaleDateString('es-ES')}</p>
-            <hr/>
-        `;
-    }
-
-    generarDatosPersonales(jugador) {
-        return `
-            <h3>Datos Personales</h3>
-            <ul>
-                <li>Posición: ${jugador.posicion_principal}</li>
-                <li>Edad: ${jugador.edad} años</li>
-                <li>Pierna hábil: ${jugador.pierna_habil}</li>
-                <li>DNI: ${jugador.dni || 'No registrado'}</li>
-                <li>Tutor: ${jugador.tutor_nombre || 'No registrado'}</li>
-                <li>Email tutor: ${jugador.tutor_email || 'No registrado'}</li>
-            </ul>
-        `;
-    }
-
-    async generarRadarChart(habilidades) {
-        const config = {
-            type: 'radar',
-            data: {
-                labels: ['Reacción', 'Equilibrio', 'Velocidad', 'Fuerza'],
-                datasets: [{
-                    label: 'Nivel actual',
-                    data: [
-                        habilidades.reaccion * 10,
-                        habilidades.equilibrio * 10,
-                        habilidades.velocidad * 10,
-                        habilidades.fuerza * 10
+                // Datos personales
+                { text: 'Datos Personales', style: 'section' },
+                {
+                    ul: [
+                        `Posición: ${jugador.posicion_principal}`,
+                        `Edad: ${jugador.edad} años`,
+                        `Pierna hábil: ${jugador.pierna_habil}`,
+                        `DNI: ${jugador.dni || 'No registrado'}`,
+                        `Tutor: ${jugador.tutor_nombre || 'No registrado'}`,
+                        `Email tutor: ${jugador.tutor_email || 'No registrado'}`
                     ],
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                scale: {
-                    min: 0,
-                    max: 100,
-                    ticks: {
-                        stepSize: 20
-                    }
+                    style: 'normal'
+                },
+                { text: '\n' },
+
+                // Habilidades (radar)
+                ...this.generarSeccionHabilidades(habilidades),
+
+                // Evaluaciones
+                ...this.generarSeccionEvaluaciones(evaluaciones),
+
+                // Pie de página
+                { text: '\n' },
+                { text: 'Informe generado por SportMetrics Pro', style: 'footer' },
+                { text: `© ${new Date().getFullYear()} - Todos los derechos reservados`, style: 'footer' }
+            ],
+            styles: {
+                header: {
+                    fontSize: 18,
+                    bold: true,
+                    alignment: 'center',
+                    margin: [0, 0, 0, 10]
+                },
+                subheader: {
+                    fontSize: 14,
+                    bold: true,
+                    alignment: 'center',
+                    margin: [0, 0, 0, 5]
+                },
+                section: {
+                    fontSize: 12,
+                    bold: true,
+                    margin: [0, 10, 0, 5]
+                },
+                normal: {
+                    fontSize: 10,
+                    margin: [0, 0, 0, 2]
+                },
+                footer: {
+                    fontSize: 8,
+                    alignment: 'center',
+                    color: 'gray'
                 }
+            },
+            defaultStyle: {
+                font: 'Roboto'
             }
         };
-        return await this.chartJSNodeCanvas.renderToBuffer(config);
-    }
 
-    async generarEvolucionChart(evaluaciones) {
-        const fechas = evaluaciones.map(e => 
-            new Date(e.fecha_evaluacion).toLocaleDateString('es-ES')
-        ).reverse();
-        
-        const goles = evaluaciones.map(e => e.goles).reverse();
-        const asistencias = evaluaciones.map(e => e.asistencias).reverse();
-
-        const config = {
-            type: 'line',
-            data: {
-                labels: fechas,
-                datasets: [
-                    {
-                        label: 'Goles',
-                        data: goles,
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Asistencias',
-                        data: asistencias,
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                        tension: 0.4
-                    }
-                ]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                }
+        // Generar el PDF
+        return new Promise((resolve, reject) => {
+            try {
+                const pdfDoc = this.printer.createPdfKitDocument(docDefinition);
+                const chunks = [];
+                
+                pdfDoc.on('data', (chunk) => chunks.push(chunk));
+                pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+                pdfDoc.on('error', reject);
+                
+                pdfDoc.end();
+            } catch (error) {
+                reject(error);
             }
-        };
-        return await this.chartJSNodeCanvas.renderToBuffer(config);
-    }
-
-    generarTablaEvaluaciones(evaluaciones) {
-        let tabla = '<h3>Historial de Evaluaciones</h3>';
-        tabla += '<table border="1" cellpadding="5">';
-        tabla += '<tr><th>Fecha</th><th>Goles</th><th>Asistencias</th><th>Minutos</th><th>Precisión</th></tr>';
-        
-        evaluaciones.slice(0, 5).forEach(e => {
-            tabla += `<tr>
-                <td>${new Date(e.fecha_evaluacion).toLocaleDateString('es-ES')}</td>
-                <td>${e.goles}</td>
-                <td>${e.asistencias}</td>
-                <td>${e.minutos_jugados || '-'}</td>
-                <td>${e.precision_pases ? e.precision_pases + '%' : '-'}</td>
-            </tr>`;
         });
-        
-        tabla += '</table>';
-        return tabla;
     }
 
-    agregarImagen(buffer, titulo) {
-        // En una implementación real, insertarías la imagen en el PDF
-        return `<p>Gráfico: ${titulo}</p>`;
+    generarSeccionHabilidades(habilidades) {
+        if (!habilidades) {
+            return [{ text: 'Sin diagnóstico inicial', style: 'normal', margin: [0, 5, 0, 5] }];
+        }
+
+        return [
+            { text: 'Diagnóstico Inicial', style: 'section' },
+            {
+                table: {
+                    widths: ['*', '*'],
+                    body: [
+                        [
+                            { text: `Reacción: ${habilidades.reaccion * 10}%`, alignment: 'left' },
+                            { text: `Equilibrio: ${habilidades.equilibrio * 10}%`, alignment: 'right' }
+                        ],
+                        [
+                            { text: `Velocidad: ${habilidades.velocidad * 10}%`, alignment: 'left' },
+                            { text: `Fuerza: ${habilidades.fuerza * 10}%`, alignment: 'right' }
+                        ]
+                    ]
+                },
+                layout: 'noBorders',
+                margin: [0, 5, 0, 10]
+            }
+        ];
     }
 
-    agregarImagenFromBase64(base64, titulo) {
-        return `<p>QR Code: ${titulo}</p>`;
-    }
+    generarSeccionEvaluaciones(evaluaciones) {
+        if (evaluaciones.length === 0) {
+            return [{ text: 'No hay evaluaciones registradas', style: 'normal', margin: [0, 5, 0, 5] }];
+        }
 
-    generarPie() {
-        return `
-            <hr/>
-            <p>Informe generado por SportMetrics Pro</p>
-            <p>© ${new Date().getFullYear()} - Todos los derechos reservados</p>
-        `;
+        const body = [
+            [
+                { text: 'Fecha', style: 'tableHeader' },
+                { text: 'Goles', style: 'tableHeader' },
+                { text: 'Asistencias', style: 'tableHeader' },
+                { text: 'Minutos', style: 'tableHeader' },
+                { text: 'Precisión', style: 'tableHeader' }
+            ]
+        ];
+
+        evaluaciones.slice(0, 5).forEach(e => {
+            body.push([
+                new Date(e.fecha_evaluacion).toLocaleDateString('es-ES'),
+                e.goles.toString(),
+                e.asistencias.toString(),
+                e.minutos_jugados ? e.minutos_jugados.toString() : '-',
+                e.precision_pases ? `${e.precision_pases}%` : '-'
+            ]);
+        });
+
+        return [
+            { text: 'Historial de Evaluaciones', style: 'section' },
+            {
+                table: {
+                    widths: ['auto', 'auto', 'auto', 'auto', 'auto'],
+                    body: body
+                },
+                layout: 'lightHorizontalLines',
+                margin: [0, 5, 0, 10]
+            }
+        ];
     }
 }
 
