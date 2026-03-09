@@ -9,6 +9,7 @@ const authRoutes = require('./src/routes/auth.routes');
 const jugadoresRoutes = require('./src/routes/jugadores.routes');
 const evaluacionesRoutes = require('./src/routes/evaluaciones.routes');
 const multimediaRoutes = require('./src/routes/multimedia.routes');
+const informesRoutes = require('./src/routes/informes.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -66,6 +67,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/jugadores', jugadoresRoutes);
 app.use('/api/evaluaciones', evaluacionesRoutes);
 app.use('/api/multimedia', multimediaRoutes);
+app.use('/api/informes', informesRoutes);
 // ======================================
 
 // Iniciar servidor
