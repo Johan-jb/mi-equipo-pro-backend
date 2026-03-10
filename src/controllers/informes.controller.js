@@ -1,6 +1,5 @@
 const pool = require('../config/database');
-const PDFGenerator = require('../utils/pdfGenerator');
-const path = require('path');
+const PDFProfesional = require('../utils/PDFProfesional');
 
 const generarInformePDF = async (req, res) => {
     try {
@@ -70,9 +69,9 @@ const generarInformePDF = async (req, res) => {
 
         const habilidades = habilidadesResult.rows[0] || null;
 
-        // Generar PDF
-        const pdfGenerator = new PDFGenerator();
-        const pdfBuffer = await pdfGenerator.generarInforme(
+        // Generar PDF con el nuevo generador profesional
+        const pdfGenerator = new PDFProfesional();
+        const pdfBuffer = await pdfGenerator.generar(
             jugador,
             evaluacionesResult.rows,
             habilidades
@@ -80,13 +79,12 @@ const generarInformePDF = async (req, res) => {
 
         // Guardar registro del informe generado
         const nombreArchivo = `informe_${jugador.nombre}_${jugador.apellido}_${Date.now()}.pdf`;
-        const url_pdf = `/informes/${nombreArchivo}`;
 
         await pool.query(
             `INSERT INTO rendimiento.informes_generados 
              (id_jugador, url_pdf, periodo_inicio, periodo_fin) 
              VALUES ($1, $2, $3, $4)`,
-            [id_jugador, url_pdf, new Date(), new Date()]
+            [id_jugador, nombreArchivo, new Date(), new Date()]
         );
 
         res.setHeader('Content-Type', 'application/pdf');
