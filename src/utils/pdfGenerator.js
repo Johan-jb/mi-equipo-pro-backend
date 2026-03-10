@@ -61,41 +61,14 @@ class PDFGenerator {
                 if (evaluaciones.length > 0) {
                     doc.fontSize(12)
                        .font('Helvetica-Bold')
-                       .text('Historial de Evaluaciones:', { underline: true })
-                       .moveDown(0.5);
+                       .text('Últimas Evaluaciones:', { underline: true })
+                       .moveDown(0.3);
 
-                    // Cabecera de tabla
-                    doc.font('Helvetica-Bold');
-                    doc.text('Fecha', 50, doc.y, { width: 100 });
-                    doc.text('Goles', 160, doc.y - 12, { width: 70, align: 'center' });
-                    doc.text('Asist.', 230, doc.y - 12, { width: 70, align: 'center' });
-                    doc.text('Min.', 300, doc.y - 12, { width: 70, align: 'center' });
-                    doc.text('Precisión', 370, doc.y - 12, { width: 80, align: 'center' });
-                    
-                    doc.moveDown(0.5);
-                    doc.moveTo(50, doc.y - 5).lineTo(450, doc.y - 5).stroke();
-                    
-                    doc.font('Helvetica');
                     evaluaciones.slice(0, 5).forEach(e => {
-                        doc.text(new Date(e.fecha_evaluacion).toLocaleDateString('es-ES'), 50, doc.y, { width: 100 });
-                        doc.text(e.goles.toString(), 160, doc.y - 12, { width: 70, align: 'center' });
-                        doc.text(e.asistencias.toString(), 230, doc.y - 12, { width: 70, align: 'center' });
-                        doc.text(e.minutos_jugados ? e.minutos_jugados.toString() : '-', 300, doc.y - 12, { width: 70, align: 'center' });
-                        doc.text(e.precision_pases ? `${e.precision_pases}%` : '-', 370, doc.y - 12, { width: 80, align: 'center' });
-                        doc.moveDown();
+                        doc.font('Helvetica')
+                           .text(`${new Date(e.fecha_evaluacion).toLocaleDateString('es-ES')}: ` +
+                                 `${e.goles} goles, ${e.asistencias} asistencias`);
                     });
-
-                    // Promedios
-                    const totalGoles = evaluaciones.reduce((sum, e) => sum + e.goles, 0);
-                    const totalAsistencias = evaluaciones.reduce((sum, e) => sum + e.asistencias, 0);
-                    const promGoles = (totalGoles / evaluaciones.length).toFixed(1);
-                    const promAsistencias = (totalAsistencias / evaluaciones.length).toFixed(1);
-
-                    doc.moveDown()
-                       .font('Helvetica-Bold')
-                       .text('Promedios:', { continued: true })
-                       .font('Helvetica')
-                       .text(` ${promGoles} goles/partido, ${promAsistencias} asistencias/partido`);
                 }
 
                 doc.end();
