@@ -26,26 +26,24 @@ class PDFGenerator {
                    .text(`${jugador.nombre} ${jugador.apellido}`, { align: 'left' })
                    .moveDown(0.5);
 
-                // Tabla de datos personales
                 doc.fontSize(10)
                    .font('Helvetica-Bold')
                    .text('Datos Personales:', { underline: true })
                    .moveDown(0.3);
 
-                const datosPersonales = [
-                    ['Posición:', jugador.posicion_principal],
-                    ['Edad:', `${jugador.edad} años`],
-                    ['Pierna hábil:', jugador.pierna_habil],
-                    ['DNI:', jugador.dni || 'No registrado'],
-                    ['Tutor:', jugador.tutor_nombre || 'No registrado'],
-                    ['Email:', jugador.tutor_email || 'No registrado']
+                // Lista de datos personales
+                const datos = [
+                    `Posición: ${jugador.posicion_principal}`,
+                    `Edad: ${jugador.edad} años`,
+                    `Pierna hábil: ${jugador.pierna_habil}`,
+                    `DNI: ${jugador.dni || 'No registrado'}`,
+                    `Tutor: ${jugador.tutor_nombre || 'No registrado'}`,
+                    `Email: ${jugador.tutor_email || 'No registrado'}`
                 ];
 
-                datosPersonales.forEach(([label, value]) => {
-                    doc.font('Helvetica-Bold').text(label, { continued: true })
-                       .font('Helvetica').text(` ${value}`);
+                datos.forEach(item => {
+                    doc.font('Helvetica').text(`• ${item}`);
                 });
-
                 doc.moveDown();
 
                 // ========== HABILIDADES ==========
@@ -56,15 +54,14 @@ class PDFGenerator {
                        .moveDown(0.3);
 
                     const habilidadesData = [
-                        ['Reacción:', `${habilidades.reaccion * 10}%`],
-                        ['Equilibrio:', `${habilidades.equilibrio * 10}%`],
-                        ['Velocidad:', `${habilidades.velocidad * 10}%`],
-                        ['Fuerza:', `${habilidades.fuerza * 10}%`]
+                        `Reacción: ${habilidades.reaccion * 10}%`,
+                        `Equilibrio: ${habilidades.equilibrio * 10}%`,
+                        `Velocidad: ${habilidades.velocidad * 10}%`,
+                        `Fuerza: ${habilidades.fuerza * 10}%`
                     ];
 
-                    habilidadesData.forEach(([label, value]) => {
-                        doc.font('Helvetica-Bold').text(label, { continued: true, width: 150 })
-                           .font('Helvetica').text(value);
+                    habilidadesData.forEach(item => {
+                        doc.font('Helvetica').text(`• ${item}`);
                     });
                     doc.moveDown();
                 }
@@ -76,28 +73,51 @@ class PDFGenerator {
                        .text('Historial de Evaluaciones', { underline: true })
                        .moveDown(0.5);
 
-                    // Cabecera de la tabla
-                    doc.font('Helvetica-Bold')
-                       .text('Fecha', { width: 100 })
-                       .text('Goles', { width: 70, align: 'center', continued: true })
-                       .text('Asist.', { width: 70, align: 'center', continued: true })
-                       .text('Min.', { width: 70, align: 'center', continued: true })
-                       .text('Precisión', { width: 80, align: 'center' })
-                       .moveDown(0.3);
+                    // Crear tabla con columnas definidas
+                    const table = {
+                        headers: ['Fecha', 'Goles', 'Asist.', 'Min.', 'Precisión'],
+                        rows: []
+                    };
 
-                    doc.font('Helvetica');
                     evaluaciones.slice(0, 5).forEach(e => {
-                        const fecha = new Date(e.fecha_evaluacion).toLocaleDateString('es-ES');
-                        const goles = e.goles.toString();
-                        const asistencias = e.asistencias.toString();
-                        const minutos = e.minutos_jugados ? e.minutos_jugados.toString() : '-';
-                        const precision = e.precision_pases ? `${e.precision_pases}%` : '-';
+                        table.rows.push([
+                            new Date(e.fecha_evaluacion).toLocaleDateString('es-ES'),
+                            e.goles.toString(),
+                            e.asistencias.toString(),
+                            e.minutos_jugados ? e.minutos_jugados.toString() : '-',
+                            e.precision_pases ? `${e.precision_pases}%` : '-'
+                        ]);
+                    });
 
-                        doc.text(fecha, { width: 100 })
-                           .text(goles, { width: 70, align: 'center', continued: true })
-                           .text(asistencias, { width: 70, align: 'center', continued: true })
-                           .text(minutos, { width: 70, align: 'center', continued: true })
-                           .text(precision, { width: 80, align: 'center' });
+                    // Dibujar la tabla
+                    let y = doc.y;
+                    const startX = 50;
+                    const columnWidths = [90, 50, 50, 50, 70];
+
+                    // Encabezados
+                    doc.font('Helvetica-Bold');
+                    let x = startX;
+                    table.headers.forEach((header, i) => {
+                        doc.text(header, x, y, { width: columnWidths[i], align: 'center' });
+                        x += columnWidths[i];
+                    });
+
+                    // Línea separadora
+                    doc.moveTo(startX, y + 15)
+                       .lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), y + 15)
+                       .stroke();
+
+                    y += 25;
+
+                    // Filas
+                    doc.font('Helvetica');
+                    table.rows.forEach(row => {
+                        x = startX;
+                        row.forEach((cell, i) => {
+                            doc.text(cell, x, y, { width: columnWidths[i], align: 'center' });
+                            x += columnWidths[i];
+                        });
+                        y += 20;
                     });
 
                     // Promedios
@@ -106,7 +126,7 @@ class PDFGenerator {
                     const promedioGoles = (totalGoles / evaluaciones.length).toFixed(1);
                     const promedioAsistencias = (totalAsistencias / evaluaciones.length).toFixed(1);
 
-                    doc.moveDown()
+                    doc.moveDown(2)
                        .font('Helvetica-Bold')
                        .text('Promedios:', { continued: true })
                        .font('Helvetica')
