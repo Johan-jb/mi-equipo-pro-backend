@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const PDFProfesional = require('../utils/PDFProfesional');
+const PDFGenerator = require('../utils/pdfGenerator');
 
 const generarInformePDF = async (req, res) => {
     try {
@@ -7,7 +7,6 @@ const generarInformePDF = async (req, res) => {
         const usuarioId = req.user.id;
         const usuarioRol = req.user.rol;
 
-        // Verificar permisos: admin, dt, preparador o padre del jugador
         let query = '';
         let queryParams = [];
 
@@ -50,7 +49,6 @@ const generarInformePDF = async (req, res) => {
 
         const jugador = jugadorResult.rows[0];
 
-        // Obtener evaluaciones del jugador
         const evaluacionesResult = await pool.query(
             `SELECT * FROM rendimiento.evaluaciones 
              WHERE id_jugador = $1 
@@ -58,7 +56,6 @@ const generarInformePDF = async (req, res) => {
             [id_jugador]
         );
 
-        // Obtener habilidades del jugador
         const habilidadesResult = await pool.query(
             `SELECT * FROM rendimiento.habilidades 
              WHERE id_jugador = $1 
@@ -69,23 +66,14 @@ const generarInformePDF = async (req, res) => {
 
         const habilidades = habilidadesResult.rows[0] || null;
 
-        // Generar PDF con el nuevo generador profesional
-        const pdfGenerator = new PDFProfesional();
-        const pdfBuffer = await pdfGenerator.generar(
+        const pdfGenerator = new PDFGenerator();
+        const pdfBuffer = await pdfGenerator.generarInforme(
             jugador,
             evaluacionesResult.rows,
             habilidades
         );
 
-        // Guardar registro del informe generado
         const nombreArchivo = `informe_${jugador.nombre}_${jugador.apellido}_${Date.now()}.pdf`;
-
-        await pool.query(
-            `INSERT INTO rendimiento.informes_generados 
-             (id_jugador, url_pdf, periodo_inicio, periodo_fin) 
-             VALUES ($1, $2, $3, $4)`,
-            [id_jugador, nombreArchivo, new Date(), new Date()]
-        );
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
