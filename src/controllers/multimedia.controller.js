@@ -1,17 +1,21 @@
 const pool = require('../config/database');
 const { upload } = require('../config/cloudinary');
 
-// Obtener todos los eventos
+// Obtener todos los eventos (solo del club del usuario)
 const getEventos = async (req, res) => {
     try {
+        const usuarioClub = req.user.id_club;
+
         const result = await pool.query(
             `SELECT e.*, 
                     COUNT(a.id_archivo) FILTER (WHERE a.tipo = 'foto') as fotos,
                     COUNT(a.id_archivo) FILTER (WHERE a.tipo = 'video') as videos
              FROM multimedia.eventos e
              LEFT JOIN multimedia.archivos a ON e.id_evento = a.id_evento
+             WHERE e.id_club = $1
              GROUP BY e.id_evento
-             ORDER BY e.fecha DESC`
+             ORDER BY e.fecha DESC`,
+            [usuarioClub]
         );
         res.json({
             success: true,
@@ -27,16 +31,17 @@ const getEventos = async (req, res) => {
     }
 };
 
-// Crear un nuevo evento
+// Crear un nuevo evento (asignando el club automáticamente)
 const createEvento = async (req, res) => {
     try {
         const { nombre, tipo, fecha, lugar, descripcion } = req.body;
+        const usuarioClub = req.user.id_club;
 
         const result = await pool.query(
-            `INSERT INTO multimedia.eventos (nombre, tipo, fecha, lugar, descripcion)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO multimedia.eventos (nombre, tipo, fecha, lugar, descripcion, id_club)
+             VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING *`,
-            [nombre, tipo, fecha, lugar, descripcion]
+            [nombre, tipo, fecha, lugar, descripcion, usuarioClub]
         );
 
         res.status(201).json({
@@ -64,6 +69,20 @@ const uploadArchivo = async (req, res) => {
 
         const { id_evento, tipo, titulo, visibilidad } = req.body;
         const userId = req.user.id;
+        const usuarioClub = req.user.id_club;
+
+        // Verificar que el evento pertenezca al club del usuario
+        const eventoCheck = await pool.query(
+            'SELECT id_evento FROM multimedia.eventos WHERE id_evento = $1 AND id_club = $2',
+            [id_evento, usuarioClub]
+        );
+
+        if (eventoCheck.rows.length === 0) {
+            return res.status(403).json({
+                success: false,
+                message: 'El evento no pertenece a tu club'
+            });
+        }
 
         // Verificar que se haya subido un archivo
         if (!req.file) {
@@ -114,10 +133,10 @@ const uploadArchivo = async (req, res) => {
         // Guardar en la base de datos
         const result = await pool.query(
             `INSERT INTO multimedia.archivos 
-             (id_evento, tipo, titulo, url_archivo, url_thumbnail, visibilidad, subido_por) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             (id_evento, tipo, titulo, url_archivo, url_thumbnail, visibilidad, subido_por, id_club) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              RETURNING *`,
-            [id_evento, tipo, titulo, url_archivo, url_thumbnail, visibilidad || 'publico', userId]
+            [id_evento, tipo, titulo, url_archivo, url_thumbnail, visibilidad || 'publico', userId, usuarioClub]
         );
 
         console.log('✅ Archivo guardado en BD con ID:', result.rows[0].id_archivo);
@@ -155,24 +174,35 @@ const uploadArchivo = async (req, res) => {
     }
 };
 
-// ========== FUNCIÓN SIMPLIFICADA (SIN JSON) ==========
-// Obtener archivos de un evento (VERSIÓN SIMPLIFICADA SIN JSON)
+// Obtener archivos de un evento (CON FILTRO POR CLUB)
 const getArchivosByEvento = async (req, res) => {
     try {
         const { id_evento } = req.params;
         const usuarioId = req.user.id;
         const usuarioRol = req.user.rol;
+        const usuarioClub = req.user.id_club;
 
         console.log('📦 Buscando archivos para evento:', id_evento);
-        console.log('🆔 ID Usuario:', usuarioId);
-        console.log('🎭 Rol detectado:', usuarioRol);
+        console.log('👤 Usuario:', usuarioId, 'Rol:', usuarioRol, 'Club:', usuarioClub);
+
+        // Verificar que el evento pertenezca al club del usuario
+        const eventoCheck = await pool.query(
+            'SELECT id_evento FROM multimedia.eventos WHERE id_evento = $1 AND id_club = $2',
+            [id_evento, usuarioClub]
+        );
+
+        if (eventoCheck.rows.length === 0) {
+            return res.status(403).json({
+                success: false,
+                message: 'El evento no pertenece a tu club'
+            });
+        }
 
         let query = '';
         let queryParams = [];
 
-        // Admin, DT y Preparador ven TODOS los archivos del evento
+        // Admin, DT y Preparador ven TODOS los archivos del evento (de SU club)
         if (usuarioRol === 'admin' || usuarioRol === 'dt' || usuarioRol === 'preparador') {
-            console.log('✅ Usuario con permisos totales');
             query = `
                 SELECT a.*
                 FROM multimedia.archivos a
@@ -181,9 +211,8 @@ const getArchivosByEvento = async (req, res) => {
             `;
             queryParams = [id_evento];
         } 
-        // Padre ve archivos públicos + privados donde su hijo está etiquetado
+        // Padre ve archivos públicos + privados donde su hijo está etiquetado (de SU club)
         else {
-            console.log('👤 Usuario con rol padre');
             query = `
                 SELECT DISTINCT a.*
                 FROM multimedia.archivos a
@@ -226,31 +255,50 @@ const createEtiqueta = async (req, res) => {
     try {
         const { id_archivo, id_jugador } = req.body;
         const usuarioId = req.user.id;
+        const usuarioRol = req.user.rol;
+        const usuarioClub = req.user.id_club;
 
-        // Verificar que el archivo existe
+        // Verificar que el archivo existe y pertenece al club
         const archivoCheck = await pool.query(
-            'SELECT id_archivo FROM multimedia.archivos WHERE id_archivo = $1',
-            [id_archivo]
+            `SELECT a.id_archivo 
+             FROM multimedia.archivos a
+             JOIN multimedia.eventos e ON a.id_evento = e.id_evento
+             WHERE a.id_archivo = $1 AND e.id_club = $2`,
+            [id_archivo, usuarioClub]
         );
 
         if (archivoCheck.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'El archivo no existe'
+                message: 'El archivo no existe o no pertenece a tu club'
             });
         }
 
-        // Verificar que el jugador existe
+        // Verificar que el jugador existe y pertenece al club
         const jugadorCheck = await pool.query(
-            'SELECT id_jugador FROM rendimiento.jugadores WHERE id_jugador = $1',
-            [id_jugador]
+            'SELECT id_jugador, id_usuario FROM rendimiento.jugadores WHERE id_jugador = $1 AND id_club = $2',
+            [id_jugador, usuarioClub]
         );
 
         if (jugadorCheck.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'El jugador no existe'
+                message: 'El jugador no existe o no pertenece a tu club'
             });
+        }
+
+        // VERIFICACIÓN DE PERMISOS:
+        // - Admin/DT/Preparador pueden etiquetar a CUALQUIER jugador del club
+        // - Padre solo puede etiquetar a sus hijos
+        const jugador = jugadorCheck.rows[0];
+        
+        if (usuarioRol !== 'admin' && usuarioRol !== 'dt' && usuarioRol !== 'preparador') {
+            if (jugador.id_usuario !== usuarioId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'No tienes permiso para etiquetar a este jugador'
+                });
+            }
         }
 
         // Insertar la etiqueta
