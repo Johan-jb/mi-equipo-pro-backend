@@ -1,242 +1,175 @@
 const PDFDocument = require('pdfkit');
-const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
-const QRCode = require('qrcode');
 
 class PDFProfesional {
-    constructor() {
-        this.chartWidth = 400;
-        this.chartHeight = 250;
-        this.chartJSNodeCanvas = new ChartJSNodeCanvas({
-            width: this.chartWidth,
-            height: this.chartHeight,
-            backgroundColour: 'white'
-        });
-    }
-
     async generar(jugador, evaluaciones, habilidades) {
         const doc = new PDFDocument({ margin: 50, size: 'A4' });
         const buffers = [];
 
         doc.on('data', buffers.push.bind(buffers));
 
-        // ========== ENCABEZADO ==========
-        doc.rect(0, 0, doc.page.width, 120).fill('#1e40af');
-        doc.fillColor('white')
-           .fontSize(28)
+        // ========== TÍTULO PRINCIPAL ==========
+        doc.fontSize(20)
            .font('Helvetica-Bold')
-           .text('SportMetrics Pro', 50, 40)
-           .fontSize(12)
-           .text('Informe de Rendimiento Deportivo', 50, 80)
-           .fontSize(10)
-           .text(`Fecha: ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}`, 50, 100);
+           .fillColor('#1e40af')
+           .text('Informe de Rendimiento', { align: 'center' })
+           .moveDown();
 
         // ========== DATOS DEL JUGADOR ==========
-        doc.fillColor('black');
-        doc.rect(50, 140, 500, 100).fillAndStroke('#f8fafc', '#cbd5e1');
-        doc.fillColor('#0f172a')
-           .fontSize(18)
+        doc.fontSize(16)
            .font('Helvetica-Bold')
-           .text(`${jugador.nombre} ${jugador.apellido}`, 70, 155)
-           .fontSize(11)
-           .font('Helvetica')
-           .text(`Posición: ${jugador.posicion_principal}`, 70, 180)
-           .text(`Edad: ${jugador.edad} años | Pierna: ${jugador.pierna_habil}`, 70, 195)
-           .text(`Club: ${jugador.club_nombre || 'No especificado'}`, 70, 210);
+           .fillColor('#0f172a')
+           .text('Datos del Jugador')
+           .moveDown(0.3);
 
-        let yPos = 260;
+        // Tabla de datos personales
+        const datos = [
+            ['Nombre completo', `${jugador.nombre} ${jugador.apellido}`],
+            ['Posición', jugador.posicion_principal],
+            ['DNI', jugador.dni || 'No registrado'],
+            ['Edad', `${jugador.edad} años`],
+            ['Pierna hábil', jugador.pierna_habil]
+        ];
 
-        // ========== RADAR DE HABILIDADES ==========
-        if (habilidades) {
-            const radarBuffer = await this._generarRadar(habilidades);
-            doc.image(radarBuffer, 50, yPos, { width: 250 });
-            
-            doc.fontSize(14)
-               .font('Helvetica-Bold')
-               .text('Habilidades', 320, yPos + 20)
-               .fontSize(10)
-               .font('Helvetica')
-               .text(`Reacción: ${habilidades.reaccion * 10}%`, 320, yPos + 50)
-               .text(`Equilibrio: ${habilidades.equilibrio * 10}%`, 320, yPos + 70)
-               .text(`Velocidad: ${habilidades.velocidad * 10}%`, 320, yPos + 90)
-               .text(`Fuerza: ${habilidades.fuerza * 10}%`, 320, yPos + 110);
-            
-            yPos += 220;
-        }
+        let y = doc.y;
+        const startX = 50;
+        const col1X = 150;
 
-        // ========== GRÁFICO DE EVOLUCIÓN ==========
-        if (evaluaciones.length > 1) {
-            const evolucionBuffer = await this._generarEvolucion(evaluaciones);
-            doc.image(evolucionBuffer, 50, yPos, { width: 500 });
-            yPos += 200;
-        }
+        doc.font('Helvetica');
+        datos.forEach(([label, value]) => {
+            doc.font('Helvetica-Bold').text(label, startX, y);
+            doc.font('Helvetica').text(value, col1X, y);
+            y += 20;
+        });
 
-        // ========== TABLA DE EVALUACIONES ==========
+        doc.y = y + 10;
+
+        // ========== EVALUACIONES ==========
         if (evaluaciones.length > 0) {
-            yPos = this._generarTablaEvaluaciones(doc, evaluaciones, yPos);
-        }
+            // Tomar la evaluación más reciente
+            const ultima = evaluaciones[0];
+            const fecha = new Date(ultima.fecha_evaluacion).toLocaleDateString('es-ES', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
 
-        // ========== RECOMENDACIONES ==========
-        if (habilidades) {
-            yPos = this._generarRecomendaciones(doc, habilidades, yPos);
-        }
+            doc.fontSize(16)
+               .font('Helvetica-Bold')
+               .fillColor('#0f172a')
+               .text(`Evaluación del ${fecha}`, { align: 'left' })
+               .moveDown(0.5);
 
-        // ========== QR CODE ==========
-        if (jugador.id_jugador) {
-            const qrBuffer = await QRCode.toBuffer(`https://sportmetrics-pro.com/jugador/${jugador.id_jugador}`);
-            doc.image(qrBuffer, 450, yPos, { width: 100 });
-            doc.fontSize(8)
-               .text('Escanee para ver perfil digital', 450, yPos + 105);
+            // Grid de métricas principales
+            const startY = doc.y;
+            const boxWidth = 200;
+            const boxHeight = 60;
+
+            // Goles
+            doc.rect(50, startY, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
+            doc.fillColor('#0f172a')
+               .fontSize(12)
+               .font('Helvetica-Bold')
+               .text('Goles', 60, startY + 10)
+               .fontSize(20)
+               .font('Helvetica')
+               .text(ultima.goles.toString(), 60, startY + 25);
+
+            // Asistencias
+            doc.rect(280, startY, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
+            doc.fillColor('#0f172a')
+               .fontSize(12)
+               .font('Helvetica-Bold')
+               .text('Asistencias', 290, startY + 10)
+               .fontSize(20)
+               .font('Helvetica')
+               .text(ultima.asistencias.toString(), 290, startY + 25);
+
+            doc.moveDown(4);
+
+            // Minutos y Precisión
+            const startY2 = doc.y;
+            doc.rect(50, startY2, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
+            doc.fillColor('#0f172a')
+               .fontSize(12)
+               .font('Helvetica-Bold')
+               .text('Minutos jugados', 60, startY2 + 10)
+               .fontSize(20)
+               .font('Helvetica')
+               .text(ultima.minutos_jugados ? ultima.minutos_jugados.toString() : '-', 60, startY2 + 25);
+
+            doc.rect(280, startY2, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
+            doc.fillColor('#0f172a')
+               .fontSize(12)
+               .font('Helvetica-Bold')
+               .text('Precisión de pases', 290, startY2 + 10)
+               .fontSize(20)
+               .font('Helvetica')
+               .text(ultima.precision_pases ? `${ultima.precision_pases}%` : '-', 290, startY2 + 25);
+
+            doc.moveDown(6);
+
+            // ========== MÉTRICAS DE RENDIMIENTO ==========
+            doc.fontSize(16)
+               .font('Helvetica-Bold')
+               .fillColor('#0f172a')
+               .text('Métricas de Rendimiento', { align: 'left' })
+               .moveDown(0.5);
+
+            // Tabla de métricas
+            const metricas = [
+                ['Métrica', 'Valor'],
+                ['Duelos ganados', ultima.duelos_ganados ? ultima.duelos_ganados.toString() : '-'],
+                ['Duelos perdidos', ultima.duelos_perdidos ? ultima.duelos_perdidos.toString() : '-'],
+                ['% duelos ganados', ultima.porcentaje_duelos_ganados ? `${Math.round(ultima.porcentaje_duelos_ganados)}%` : '-'],
+                ['Distancia recorrida', ultima.distancia_recorrida_km ? `${ultima.distancia_recorrida_km} km` : '-'],
+                ['Velocidad máxima', ultima.velocidad_maxima_kmh ? `${ultima.velocidad_maxima_kmh} km/h` : '-']
+            ];
+
+            let metricY = doc.y;
+            const metricStartX = 50;
+            const metricCol1 = 200;
+
+            metricas.forEach(([metrica, valor]) => {
+                if (metrica === 'Métrica') {
+                    doc.font('Helvetica-Bold');
+                } else {
+                    doc.font('Helvetica');
+                }
+                doc.text(metrica, metricStartX, metricY);
+                doc.text(valor, metricCol1, metricY);
+                metricY += 20;
+            });
+
+            doc.y = metricY + 10;
+
+            // ========== OBSERVACIONES ==========
+            if (ultima.observaciones) {
+                doc.fontSize(16)
+                   .font('Helvetica-Bold')
+                   .fillColor('#0f172a')
+                   .text('Observaciones', { align: 'left' })
+                   .moveDown(0.5);
+
+                const observaciones = ultima.observaciones.destacar || JSON.stringify(ultima.observaciones);
+                doc.font('Helvetica')
+                   .fontSize(10)
+                   .fillColor('#334155')
+                   .text(observaciones, 50, doc.y, { width: 500, align: 'justify' });
+            }
+
+            doc.moveDown(2);
         }
 
         // ========== PIE DE PÁGINA ==========
         doc.fontSize(8)
            .fillColor('#64748b')
-           .text('SportMetrics Pro - Tecnología aplicada al rendimiento deportivo', 50, 750, { align: 'center' });
+           .text(`Informe generado por SportMetrics Pro - ${new Date().toLocaleDateString('es-ES')}`, 50, 750, { align: 'center' });
 
         doc.end();
 
         return new Promise(resolve => {
             doc.on('end', () => resolve(Buffer.concat(buffers)));
         });
-    }
-
-    async _generarRadar(habilidades) {
-        const config = {
-            type: 'radar',
-            data: {
-                labels: ['Reacción', 'Equilibrio', 'Velocidad', 'Fuerza'],
-                datasets: [{
-                    label: 'Nivel actual',
-                    data: [
-                        habilidades.reaccion * 10,
-                        habilidades.equilibrio * 10,
-                        habilidades.velocidad * 10,
-                        habilidades.fuerza * 10
-                    ],
-                    backgroundColor: 'rgba(30, 64, 175, 0.2)',
-                    borderColor: '#1e40af',
-                    pointBackgroundColor: '#1e40af'
-                }]
-            },
-            options: {
-                scale: { min: 0, max: 100, ticks: { stepSize: 20 } }
-            }
-        };
-        return this.chartJSNodeCanvas.renderToBuffer(config);
-    }
-
-    async _generarEvolucion(evaluaciones) {
-        const fechas = evaluaciones.map(e => 
-            new Date(e.fecha_evaluacion).toLocaleDateString('es-ES')
-        ).reverse();
-        
-        const goles = evaluaciones.map(e => e.goles).reverse();
-        const asistencias = evaluaciones.map(e => e.asistencias).reverse();
-
-        const config = {
-            type: 'line',
-            data: {
-                labels: fechas,
-                datasets: [
-                    {
-                        label: 'Goles',
-                        data: goles,
-                        borderColor: '#1e40af',
-                        backgroundColor: 'rgba(30, 64, 175, 0.1)',
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Asistencias',
-                        data: asistencias,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4
-                    }
-                ]
-            },
-            options: {
-                scales: { y: { beginAtZero: true, stepSize: 1 } }
-            }
-        };
-        return this.chartJSNodeCanvas.renderToBuffer(config);
-    }
-
-    _generarTablaEvaluaciones(doc, evaluaciones, yPos) {
-        doc.fontSize(16)
-           .font('Helvetica-Bold')
-           .fillColor('#1e40af')
-           .text('Historial de Evaluaciones', 50, yPos + 20);
-
-        yPos += 50;
-
-        // Cabecera
-        doc.rect(50, yPos, 500, 25).fill('#e2e8f0');
-        doc.fillColor('#0f172a')
-           .fontSize(10)
-           .font('Helvetica-Bold')
-           .text('Fecha', 60, yPos + 8)
-           .text('Goles', 160, yPos + 8)
-           .text('Asist.', 230, yPos + 8)
-           .text('Min.', 300, yPos + 8)
-           .text('Precisión', 370, yPos + 8);
-
-        yPos += 25;
-
-        // Filas
-        evaluaciones.slice(0, 5).forEach((e, i) => {
-            const bgColor = i % 2 === 0 ? '#f8fafc' : '#ffffff';
-            doc.rect(50, yPos, 500, 25).fill(bgColor);
-            doc.fillColor('#0f172a')
-               .font('Helvetica')
-               .text(new Date(e.fecha_evaluacion).toLocaleDateString('es-ES'), 60, yPos + 8)
-               .text(e.goles.toString(), 160, yPos + 8)
-               .text(e.asistencias.toString(), 230, yPos + 8)
-               .text(e.minutos_jugados ? e.minutos_jugados.toString() : '-', 300, yPos + 8)
-               .text(e.precision_pases ? `${e.precision_pases}%` : '-', 370, yPos + 8);
-            yPos += 25;
-        });
-
-        yPos += 20;
-
-        // Promedios
-        const totalGoles = evaluaciones.reduce((sum, e) => sum + e.goles, 0);
-        const totalAsistencias = evaluaciones.reduce((sum, e) => sum + e.asistencias, 0);
-        const promGoles = (totalGoles / evaluaciones.length).toFixed(1);
-        const promAsistencias = (totalAsistencias / evaluaciones.length).toFixed(1);
-
-        doc.fontSize(10)
-           .font('Helvetica-Bold')
-           .text(`Promedio: ${promGoles} goles/partido | ${promAsistencias} asistencias/partido`, 50, yPos);
-
-        return yPos + 30;
-    }
-
-    _generarRecomendaciones(doc, habilidades, yPos) {
-        doc.fontSize(16)
-           .font('Helvetica-Bold')
-           .fillColor('#1e40af')
-           .text('Recomendaciones', 50, yPos + 20);
-
-        yPos += 45;
-
-        const recomendaciones = [];
-        if (habilidades.velocidad < 7) recomendaciones.push('• Realizar ejercicios de velocidad (sprints cortos, cambios de ritmo)');
-        if (habilidades.fuerza < 7) recomendaciones.push('• Trabajar fuerza en piernas (sentadillas, saltos)');
-        if (habilidades.equilibrio < 7) recomendaciones.push('• Mejorar equilibrio con ejercicios de coordinación');
-        if (habilidades.reaccion < 7) recomendaciones.push('• Entrenar reflejos con ejercicios de reacción');
-
-        if (recomendaciones.length > 0) {
-            doc.font('Helvetica');
-            recomendaciones.forEach(r => {
-                doc.text(r, 50, yPos);
-                yPos += 20;
-            });
-        } else {
-            doc.text('• Continúa con el excelente trabajo. Mantener el nivel actual.', 50, yPos);
-            yPos += 20;
-        }
-
-        return yPos;
     }
 }
 
