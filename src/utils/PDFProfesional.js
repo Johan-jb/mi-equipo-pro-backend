@@ -19,17 +19,19 @@ class PDFProfesional {
         let yPos = 120;
 
         // ========== TARJETA DE DATOS DEL JUGADOR ==========
-        doc.rect(50, yPos, 500, 80).fillAndStroke('#f8fafc', '#cbd5e1');
+        doc.rect(50, yPos, 500, 100).fillAndStroke('#f8fafc', '#cbd5e1');
         doc.fillColor('#0f172a')
            .fontSize(16)
            .font('Helvetica-Bold')
            .text(`${jugador.nombre} ${jugador.apellido}`, 70, yPos + 15)
            .fontSize(10)
            .font('Helvetica')
-           .text(`Posición: ${jugador.posicion_principal} · Edad: ${jugador.edad} años · Pierna: ${jugador.pierna_habil}`, 70, yPos + 40)
-           .text(`DNI: ${jugador.dni || 'No registrado'}`, 70, yPos + 55);
+           .text(`Posición: ${jugador.posicion_principal}`, 70, yPos + 40)
+           .text(`Edad: ${jugador.edad} años`, 70, yPos + 55)
+           .text(`Pierna hábil: ${jugador.pierna_habil}`, 70, yPos + 70)
+           .text(`DNI: ${jugador.dni || 'No registrado'}`, 70, yPos + 85);
 
-        yPos += 100;
+        yPos += 120;
 
         // ========== EVALUACIONES ==========
         if (evaluaciones.length > 0) {
