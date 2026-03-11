@@ -12,14 +12,14 @@ class PDFProfesional {
            .font('Helvetica-Bold')
            .fillColor('#1e40af')
            .text('Informe de Rendimiento', { align: 'center' })
-           .moveDown();
+           .moveDown(2);
 
         // ========== DATOS DEL JUGADOR ==========
         doc.fontSize(16)
            .font('Helvetica-Bold')
            .fillColor('#0f172a')
            .text('Datos del Jugador')
-           .moveDown(0.3);
+           .moveDown(0.5);
 
         // Tabla de datos personales
         const datos = [
@@ -32,7 +32,7 @@ class PDFProfesional {
 
         let y = doc.y;
         const startX = 50;
-        const col1X = 150;
+        const col1X = 180;
 
         doc.font('Helvetica');
         datos.forEach(([label, value]) => {
@@ -41,6 +41,7 @@ class PDFProfesional {
             y += 20;
         });
 
+        // Actualizar la posición Y del documento
         doc.y = y + 10;
 
         // ========== EVALUACIONES ==========
@@ -63,6 +64,7 @@ class PDFProfesional {
             const startY = doc.y;
             const boxWidth = 200;
             const boxHeight = 60;
+            const marginRight = 30;
 
             // Goles
             doc.rect(50, startY, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
@@ -75,19 +77,19 @@ class PDFProfesional {
                .text(ultima.goles.toString(), 60, startY + 25);
 
             // Asistencias
-            doc.rect(280, startY, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
+            doc.rect(50 + boxWidth + marginRight, startY, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
             doc.fillColor('#0f172a')
                .fontSize(12)
                .font('Helvetica-Bold')
-               .text('Asistencias', 290, startY + 10)
+               .text('Asistencias', 60 + boxWidth + marginRight, startY + 10)
                .fontSize(20)
                .font('Helvetica')
-               .text(ultima.asistencias.toString(), 290, startY + 25);
+               .text(ultima.asistencias.toString(), 60 + boxWidth + marginRight, startY + 25);
 
-            doc.moveDown(4);
+            // Segunda fila de métricas
+            const startY2 = startY + boxHeight + 10;
 
-            // Minutos y Precisión
-            const startY2 = doc.y;
+            // Minutos jugados
             doc.rect(50, startY2, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
             doc.fillColor('#0f172a')
                .fontSize(12)
@@ -97,16 +99,18 @@ class PDFProfesional {
                .font('Helvetica')
                .text(ultima.minutos_jugados ? ultima.minutos_jugados.toString() : '-', 60, startY2 + 25);
 
-            doc.rect(280, startY2, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
+            // Precisión de pases
+            doc.rect(50 + boxWidth + marginRight, startY2, boxWidth, boxHeight).fillAndStroke('#f8fafc', '#cbd5e1');
             doc.fillColor('#0f172a')
                .fontSize(12)
                .font('Helvetica-Bold')
-               .text('Precisión de pases', 290, startY2 + 10)
+               .text('Precisión de pases', 60 + boxWidth + marginRight, startY2 + 10)
                .fontSize(20)
                .font('Helvetica')
-               .text(ultima.precision_pases ? `${ultima.precision_pases}%` : '-', 290, startY2 + 25);
+               .text(ultima.precision_pases ? `${ultima.precision_pases}%` : '-', 60 + boxWidth + marginRight, startY2 + 25);
 
-            doc.moveDown(6);
+            // Actualizar posición Y después de las tarjetas
+            doc.y = startY2 + boxHeight + 20;
 
             // ========== MÉTRICAS DE RENDIMIENTO ==========
             doc.fontSize(16)
@@ -127,10 +131,10 @@ class PDFProfesional {
 
             let metricY = doc.y;
             const metricStartX = 50;
-            const metricCol1 = 200;
+            const metricCol1 = 180;
 
-            metricas.forEach(([metrica, valor]) => {
-                if (metrica === 'Métrica') {
+            metricas.forEach(([metrica, valor], index) => {
+                if (index === 0) {
                     doc.font('Helvetica-Bold');
                 } else {
                     doc.font('Helvetica');
@@ -155,9 +159,9 @@ class PDFProfesional {
                    .fontSize(10)
                    .fillColor('#334155')
                    .text(observaciones, 50, doc.y, { width: 500, align: 'justify' });
-            }
 
-            doc.moveDown(2);
+                doc.moveDown(2);
+            }
         }
 
         // ========== PIE DE PÁGINA ==========
