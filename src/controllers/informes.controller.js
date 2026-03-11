@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const PDFGenerator = require('../utils/pdfGenerator');
+const PDFProfesional = require('../utils/PDFProfesional');
 
 const generarInformePDF = async (req, res) => {
     try {
@@ -66,8 +66,8 @@ const generarInformePDF = async (req, res) => {
 
         const habilidades = habilidadesResult.rows[0] || null;
 
-        const pdfGenerator = new PDFGenerator();
-        const pdfBuffer = await pdfGenerator.generarInforme(
+        const pdfGenerator = new PDFProfesional();
+        const pdfBuffer = await pdfGenerator.generar(
             jugador,
             evaluacionesResult.rows,
             habilidades
