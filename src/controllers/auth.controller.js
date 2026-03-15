@@ -20,11 +20,11 @@ const register = async (req, res) => {
             });
         }
 
-        // 1. CREAR EL CLUB CON PLAN TRIAL
+        // 1. CREAR EL CLUB CON PLAN TRIAL (fecha_expiracion_trial = hoy + 15 días)
         const clubResult = await pool.query(
             `INSERT INTO rendimiento.clubes 
              (nombre, descripcion, plan, fecha_inicio_trial, fecha_expiracion_trial, jugadores_max, almacenamiento_max) 
-             VALUES ($1, $2, 'trial', CURRENT_TIMESTAMP, CURRENT_DATE + INTERVAL '15 days', 30, 5) 
+             VALUES ($1, $2, 'trial', CURRENT_TIMESTAMP, CURRENT_DATE + 15, 30, 5) 
              RETURNING id_club, fecha_expiracion_trial`,
             [club_nombre || 'Mi Club', 'Club creado desde el registro']
         );
@@ -92,7 +92,10 @@ const login = async (req, res) => {
         // Buscar usuario por email (INCLUYENDO id_club)
         const result = await pool.query(
             `SELECT u.*, c.nombre as club_nombre,
-                    c.plan, c.fecha_expiracion_trial, c.jugadores_max, c.almacenamiento_max
+                    c.plan as club_plan,
+                    c.fecha_expiracion_trial,
+                    c.jugadores_max,
+                    c.almacenamiento_max
              FROM rendimiento.usuarios u
              LEFT JOIN rendimiento.clubes c ON u.id_club = c.id_club
              WHERE u.email = $1`,
@@ -125,12 +128,11 @@ const login = async (req, res) => {
         );
 
         // Verificar si el club está en período de prueba y si ya expiró
-        if (user.plan === 'trial') {
+        if (user.club_plan === 'trial') {
             const hoy = new Date();
             const expiracion = new Date(user.fecha_expiracion_trial);
             
             if (hoy > expiracion) {
-                // El trial expiró, pero igual dejamos entrar con un warning
                 console.log(`⚠️ Club ${user.club_nombre} con trial expirado el ${user.fecha_expiracion_trial}`);
             }
         }
