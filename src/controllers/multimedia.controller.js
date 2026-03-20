@@ -333,10 +333,69 @@ const createEtiqueta = async (req, res) => {
     }
 };
 
+// NUEVA FUNCIÓN: Eliminar un archivo (y sus etiquetas)
+const eliminarArchivo = async (req, res) => {
+    try {
+        const { id } = req.params;  // id_archivo
+        const usuarioClub = req.user.id_club;
+        const usuarioRol = req.user.rol;
+
+        // Solo admin, DT o preparador pueden eliminar
+        if (usuarioRol !== 'admin' && usuarioRol !== 'dt' && usuarioRol !== 'preparador') {
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permiso para eliminar archivos'
+            });
+        }
+
+        // Verificar que el archivo existe y pertenece al club del usuario
+        const archivoResult = await pool.query(
+            'SELECT * FROM multimedia.archivos WHERE id_archivo = $1 AND id_club = $2',
+            [id, usuarioClub]
+        );
+
+        if (archivoResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Archivo no encontrado o no pertenece a tu club'
+            });
+        }
+
+        // Eliminar etiquetas asociadas al archivo
+        await pool.query(
+            'DELETE FROM multimedia.etiquetas_jugadores WHERE id_archivo = $1',
+            [id]
+        );
+
+        // (Opcional) Eliminar de Cloudinary si se desea (requiere public_id)
+        // Por ahora solo eliminamos de la BD
+
+        // Eliminar el archivo de la base de datos
+        await pool.query(
+            'DELETE FROM multimedia.archivos WHERE id_archivo = $1',
+            [id]
+        );
+
+        res.json({
+            success: true,
+            message: 'Archivo eliminado correctamente'
+        });
+
+    } catch (error) {
+        console.error('Error eliminando archivo:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al eliminar el archivo',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getEventos,
     createEvento,
     uploadArchivo,
     getArchivosByEvento,
-    createEtiqueta
+    createEtiqueta,
+    eliminarArchivo  // 👈 NUEVA FUNCIÓN EXPORTADA
 };

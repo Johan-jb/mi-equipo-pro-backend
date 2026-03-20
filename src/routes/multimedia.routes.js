@@ -1,22 +1,29 @@
 const express = require('express');
 const router = express.Router();
+const authMiddleware = require('../middlewares/authMiddleware');
+const { upload } = require('../config/cloudinary');
 const {
     getEventos,
     createEvento,
     uploadArchivo,
     getArchivosByEvento,
-    createEtiqueta  // <-- NUEVA FUNCIÓN IMPORTADA
+    createEtiqueta,
+    eliminarArchivo   // 👈 Importamos la nueva función
 } = require('../controllers/multimedia.controller');
-const { authMiddleware } = require('../middleware/auth.middleware');
-const { upload } = require('../config/cloudinary');
 
-// Todas las rutas de multimedia son privadas (requieren login)
+// Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
+// Rutas de eventos
 router.get('/eventos', getEventos);
 router.post('/eventos', createEvento);
-router.post('/archivos', upload.single('archivo'), uploadArchivo);
+
+// Rutas de archivos
 router.get('/eventos/:id_evento/archivos', getArchivosByEvento);
-router.post('/etiquetas', createEtiqueta);  // <-- NUEVA RUTA PARA ETIQUETAR
+router.post('/archivos', upload.single('archivo'), uploadArchivo);
+router.delete('/archivos/:id', eliminarArchivo);   // 👈 NUEVA RUTA PARA ELIMINAR
+
+// Rutas de etiquetas
+router.post('/etiquetas', createEtiqueta);
 
 module.exports = router;
