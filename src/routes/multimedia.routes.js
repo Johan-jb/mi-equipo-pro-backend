@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middlewares/authMiddleware');
+const { authMiddleware } = require('../middleware/auth.middleware');
 const { upload } = require('../config/cloudinary');
 const {
     getEventos,
@@ -8,7 +8,7 @@ const {
     uploadArchivo,
     getArchivosByEvento,
     createEtiqueta,
-    eliminarArchivo   // 👈 Importamos la nueva función
+    eliminarArchivo
 } = require('../controllers/multimedia.controller');
 
 // Todas las rutas requieren autenticación
@@ -21,7 +21,7 @@ router.post('/eventos', createEvento);
 // Rutas de archivos
 router.get('/eventos/:id_evento/archivos', getArchivosByEvento);
 router.post('/archivos', upload.single('archivo'), uploadArchivo);
-router.delete('/archivos/:id', eliminarArchivo);   // 👈 NUEVA RUTA PARA ELIMINAR
+router.delete('/archivos/:id', eliminarArchivo);
 
 // Rutas de etiquetas
 router.post('/etiquetas', createEtiqueta);
