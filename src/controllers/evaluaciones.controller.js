@@ -155,7 +155,7 @@ const getEvaluacionById = async (req, res) => {
     }
 };
 
-// Actualizar una evaluación
+// Actualizar una evaluación (CORREGIDO)
 const updateEvaluacion = async (req, res) => {
     try {
         const padreId = req.user.id;
@@ -192,6 +192,13 @@ const updateEvaluacion = async (req, res) => {
             });
         }
 
+        // Función para convertir "" a null en campos numéricos
+        const toNumberOrNull = (value) => {
+            if (value === "" || value === null || value === undefined) return null;
+            const num = Number(value);
+            return isNaN(num) ? null : num;
+        };
+
         const result = await pool.query(
             `UPDATE rendimiento.evaluaciones SET
                 fecha_evaluacion = $1,
@@ -210,10 +217,20 @@ const updateEvaluacion = async (req, res) => {
              WHERE id_evaluacion = $14
              RETURNING *`,
             [
-                fecha_evaluacion, peso_kg, altura_cm, goles, asistencias,
-                minutos_jugados, precision_pases, precision_remates,
-                duelos_ganados, duelos_perdidos, distancia_recorrida_km,
-                velocidad_maxima_kmh, observaciones, evaluacionId
+                fecha_evaluacion,
+                toNumberOrNull(peso_kg),
+                toNumberOrNull(altura_cm),
+                toNumberOrNull(goles),
+                toNumberOrNull(asistencias),
+                toNumberOrNull(minutos_jugados),
+                toNumberOrNull(precision_pases),
+                toNumberOrNull(precision_remates),  // ← Este era el problema
+                toNumberOrNull(duelos_ganados),
+                toNumberOrNull(duelos_perdidos),
+                toNumberOrNull(distancia_recorrida_km),
+                toNumberOrNull(velocidad_maxima_kmh),
+                observaciones,
+                evaluacionId
             ]
         );
 
