@@ -1,15 +1,14 @@
 const pool = require('../config/database');
 const PDFProfesional = require('../utils/PDFProfesional');
 
-const generarInformePDF = async (req, res) => {
+const generarInformeJugador = async (req, res) => {
     try {
         const { id_jugador } = req.params;
-        const { fecha } = req.query; // 👈 NUEVO: permite filtrar por fecha
+        const { fecha } = req.query;
         const usuarioId = req.user.id;
         const usuarioRol = req.user.rol;
         const usuarioClub = req.user.id_club;
 
-        // Verificar que el jugador pertenezca al club del usuario
         let jugadorQuery = '';
         let jugadorParams = [];
 
@@ -52,11 +51,9 @@ const generarInformePDF = async (req, res) => {
 
         const jugador = jugadorResult.rows[0];
 
-        // 👇 NUEVO: obtener evaluaciones según fecha
         let evaluaciones = [];
         
         if (fecha) {
-            // Si hay fecha, buscar solo esa evaluación
             const evaluacionResult = await pool.query(
                 `SELECT * FROM rendimiento.evaluaciones 
                  WHERE id_jugador = $1 AND DATE(fecha_evaluacion) = $2
@@ -65,7 +62,6 @@ const generarInformePDF = async (req, res) => {
             );
             evaluaciones = evaluacionResult.rows;
         } else {
-            // Si no hay fecha, obtener todas las evaluaciones
             const evaluacionesResult = await pool.query(
                 `SELECT * FROM rendimiento.evaluaciones 
                  WHERE id_jugador = $1 
@@ -75,7 +71,6 @@ const generarInformePDF = async (req, res) => {
             evaluaciones = evaluacionesResult.rows;
         }
 
-        // Obtener habilidades del jugador
         const habilidadesResult = await pool.query(
             `SELECT * FROM rendimiento.habilidades 
              WHERE id_jugador = $1 
@@ -86,7 +81,6 @@ const generarInformePDF = async (req, res) => {
 
         const habilidades = habilidadesResult.rows[0] || null;
 
-        // 👇 USA TU CLASE PDFProfesional ORIGINAL
         const pdfGenerator = new PDFProfesional();
         const pdfBuffer = await pdfGenerator.generar(
             jugador,
@@ -94,7 +88,6 @@ const generarInformePDF = async (req, res) => {
             habilidades
         );
 
-        // Nombre del archivo
         let nombreArchivo = '';
         if (fecha) {
             const fechaFormateada = new Date(fecha).toLocaleDateString('es-ES').replace(/\//g, '-');
@@ -118,5 +111,5 @@ const generarInformePDF = async (req, res) => {
 };
 
 module.exports = {
-    generarInformePDF
+    generarInformeJugador
 };
