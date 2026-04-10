@@ -1,10 +1,10 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Usar DATABASE_URL si existe (Render/Supabase), si no usar variables individuales
+// Usar SOLO DATABASE_URL
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 10000,
 });
 
