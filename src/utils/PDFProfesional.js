@@ -14,7 +14,7 @@ class PDFProfesional {
            .font('Helvetica-Bold')
            .text('SportMetrics Pro', 50, 35)
            .fontSize(10)
-           .text(`Informe generado el ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}`, 50, 70);
+           .text(`Informe generado el ${new Date().toLocaleDateString('es-ES', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: 'long', day: 'numeric' })}`, 50, 70);
 
         let yPos = 120;
 
