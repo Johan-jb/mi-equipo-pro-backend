@@ -7,6 +7,16 @@ class PDFProfesional {
 
         doc.on('data', buffers.push.bind(buffers));
 
+        let yPos = 120;
+
+        // Helper para salto de página automático
+        const checkPageBreak = (extra = 0) => {
+            if (yPos + extra > 700) {
+                doc.addPage();
+                yPos = 50;
+            }
+        };
+
         // ========== ENCABEZADO PROFESIONAL ==========
         doc.rect(0, 0, doc.page.width, 100).fill('#1e3a5f');
         doc.fillColor('white')
@@ -14,9 +24,12 @@ class PDFProfesional {
            .font('Helvetica-Bold')
            .text('SportMetrics Pro', 50, 35)
            .fontSize(10)
-           .text(`Informe generado el ${new Date().toLocaleDateString('es-ES', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: 'long', day: 'numeric' })}`, 50, 70);
-
-        let yPos = 120;
+           .text(`Informe generado el ${new Date().toLocaleDateString('es-ES', {
+               timeZone: 'America/Argentina/Buenos_Aires',
+               year: 'numeric',
+               month: 'long',
+               day: 'numeric'
+           })}`, 50, 70);
 
         // ========== TARJETA DE DATOS DEL JUGADOR ==========
         doc.rect(50, yPos, 500, 100).fillAndStroke('#f8fafc', '#cbd5e1');
@@ -42,7 +55,9 @@ class PDFProfesional {
                 year: 'numeric'
             });
 
-            // Título de sección
+            checkPageBreak(40);
+
+            // Título
             doc.rect(50, yPos, 500, 25).fill('#1e3a5f');
             doc.fillColor('white')
                .fontSize(12)
@@ -51,7 +66,6 @@ class PDFProfesional {
 
             yPos += 35;
 
-            // Tarjetas de métricas (2 columnas)
             const boxWidth = 235;
             const boxHeight = 60;
             const margin = 30;
@@ -78,7 +92,7 @@ class PDFProfesional {
 
             yPos += boxHeight + 10;
 
-            // Minutos jugados
+            // Minutos
             doc.rect(50, yPos, boxWidth, boxHeight).fillAndStroke('#f3e8ff', '#8b5cf6');
             doc.fillColor('#5b21b6')
                .fontSize(10)
@@ -88,7 +102,7 @@ class PDFProfesional {
                .font('Helvetica')
                .text(ultima.minutos_jugados ? `${ultima.minutos_jugados}'` : '-', 70, yPos + 25);
 
-            // Precisión de pases
+            // Precisión
             doc.rect(50 + boxWidth + margin, yPos, boxWidth, boxHeight).fillAndStroke('#fff1e6', '#f97316');
             doc.fillColor('#9a3412')
                .fontSize(10)
@@ -100,30 +114,30 @@ class PDFProfesional {
 
             yPos += boxHeight + 15;
 
-            // Tabla de métricas de rendimiento (compacta)
+            // Tabla métricas
             const metricas = [
-                ['Duelos ganados', ultima.duelos_ganados ? ultima.duelos_ganados.toString() : '-'],
-                ['Duelos perdidos', ultima.duelos_perdidos ? ultima.duelos_perdidos.toString() : '-'],
+                ['Duelos ganados', ultima.duelos_ganados || '-'],
+                ['Duelos perdidos', ultima.duelos_perdidos || '-'],
                 ['% duelos', ultima.porcentaje_duelos_ganados ? `${Math.round(ultima.porcentaje_duelos_ganados)}%` : '-'],
                 ['Distancia', ultima.distancia_recorrida_km ? `${ultima.distancia_recorrida_km} km` : '-'],
                 ['Vel. máxima', ultima.velocidad_maxima_kmh ? `${ultima.velocidad_maxima_kmh} km/h` : '-']
             ];
 
-            metricas.forEach(([metrica, valor], index) => {
-                const bgColor = index % 2 === 0 ? '#f8fafc' : '#ffffff';
-                doc.rect(50, yPos, 500, 18).fill(bgColor);
+            metricas.forEach(([m, v], i) => {
+                doc.rect(50, yPos, 500, 18).fill(i % 2 === 0 ? '#f8fafc' : '#ffffff');
                 doc.fillColor('#0f172a')
-                   .font('Helvetica')
                    .fontSize(9)
-                   .text(metrica, 60, yPos + 4)
-                   .text(valor, 300, yPos + 4);
+                   .text(m, 60, yPos + 4)
+                   .text(v.toString(), 300, yPos + 4);
                 yPos += 18;
             });
 
             yPos += 10;
 
-            // Observaciones (si existen)
+            // ========== OBSERVACIONES ==========
             if (ultima.observaciones) {
+                checkPageBreak(80);
+
                 doc.rect(50, yPos, 500, 20).fill('#fef3c7');
                 doc.fillColor('#92400e')
                    .fontSize(10)
@@ -133,17 +147,29 @@ class PDFProfesional {
                 yPos += 25;
 
                 const observaciones = ultima.observaciones.destacar || JSON.stringify(ultima.observaciones);
+
                 doc.fillColor('#334155')
                    .fontSize(9)
-                   .font('Helvetica')
-                   .text(observaciones, 60, yPos, { width: 480, align: 'justify' });
+                   .font('Helvetica');
 
-                yPos += 30;
+                const textHeight = doc.heightOfString(observaciones, {
+                    width: 480,
+                    align: 'justify'
+                });
+
+                doc.text(observaciones, 60, yPos, {
+                    width: 480,
+                    align: 'justify'
+                });
+
+                yPos += textHeight + 15;
             }
         }
 
-        // ========== HABILIDADES (si hay espacio) ==========
-        if (habilidades && yPos < 700) {
+        // ========== HABILIDADES ==========
+        if (habilidades) {
+            checkPageBreak(100);
+
             doc.rect(50, yPos, 500, 20).fill('#1e3a5f');
             doc.fillColor('white')
                .fontSize(10)
@@ -156,54 +182,29 @@ class PDFProfesional {
             const habBoxHeight = 50;
             const habMargin = 20;
 
-            // Reacción
-            doc.rect(50, yPos, habBoxWidth, habBoxHeight).fillAndStroke('#fee2e2', '#ef4444');
-            doc.fillColor('#7f1d1d')
-               .fontSize(8)
-               .font('Helvetica-Bold')
-               .text('Reacción', 60, yPos + 8)
-               .fontSize(14)
-               .font('Helvetica')
-               .text(`${habilidades.reaccion * 10}%`, 60, yPos + 22);
+            const drawHab = (label, value, x, colorBg, colorBorder, colorText) => {
+                doc.rect(x, yPos, habBoxWidth, habBoxHeight).fillAndStroke(colorBg, colorBorder);
+                doc.fillColor(colorText)
+                   .fontSize(8)
+                   .font('Helvetica-Bold')
+                   .text(label, x + 10, yPos + 8)
+                   .fontSize(14)
+                   .font('Helvetica')
+                   .text(`${value * 10}%`, x + 10, yPos + 22);
+            };
 
-            // Equilibrio
-            doc.rect(50 + habBoxWidth + habMargin, yPos, habBoxWidth, habBoxHeight).fillAndStroke('#fef9c3', '#eab308');
-            doc.fillColor('#854d0e')
-               .fontSize(8)
-               .font('Helvetica-Bold')
-               .text('Equilibrio', 60 + habBoxWidth + habMargin, yPos + 8)
-               .fontSize(14)
-               .font('Helvetica')
-               .text(`${habilidades.equilibrio * 10}%`, 60 + habBoxWidth + habMargin, yPos + 22);
+            drawHab('Reacción', habilidades.reaccion, 50, '#fee2e2', '#ef4444', '#7f1d1d');
+            drawHab('Equilibrio', habilidades.equilibrio, 50 + (habBoxWidth + habMargin), '#fef9c3', '#eab308', '#854d0e');
+            drawHab('Velocidad', habilidades.velocidad, 50 + (habBoxWidth + habMargin) * 2, '#dcfce7', '#22c55e', '#14532d');
+            drawHab('Fuerza', habilidades.fuerza, 50 + (habBoxWidth + habMargin) * 3, '#e0f2fe', '#0ea5e9', '#075985');
 
-            // Velocidad
-            doc.rect(50 + (habBoxWidth + habMargin) * 2, yPos, habBoxWidth, habBoxHeight).fillAndStroke('#dcfce7', '#22c55e');
-            doc.fillColor('#14532d')
-               .fontSize(8)
-               .font('Helvetica-Bold')
-               .text('Velocidad', 60 + (habBoxWidth + habMargin) * 2, yPos + 8)
-               .fontSize(14)
-               .font('Helvetica')
-               .text(`${habilidades.velocidad * 10}%`, 60 + (habBoxWidth + habMargin) * 2, yPos + 22);
-
-            // Fuerza
-            doc.rect(50 + (habBoxWidth + habMargin) * 3, yPos, habBoxWidth, habBoxHeight).fillAndStroke('#e0f2fe', '#0ea5e9');
-            doc.fillColor('#075985')
-               .fontSize(8)
-               .font('Helvetica-Bold')
-               .text('Fuerza', 60 + (habBoxWidth + habMargin) * 3, yPos + 8)
-               .fontSize(14)
-               .font('Helvetica')
-               .text(`${habilidades.fuerza * 10}%`, 60 + (habBoxWidth + habMargin) * 3, yPos + 22);
-
-            yPos += habBoxHeight + 15;
+            yPos += habBoxHeight + 20;
         }
 
-        // ========== PIE DE PÁGINA ==========
+        // ========== FOOTER ==========
         doc.rect(0, 740, doc.page.width, 50).fill('#1e3a5f');
         doc.fillColor('white')
            .fontSize(7)
-           .font('Helvetica')
            .text('SportMetrics Pro - Tecnología aplicada al rendimiento deportivo', 50, 755, { align: 'center' })
            .text('Todos los derechos reservados', 50, 770, { align: 'center' });
 
