@@ -136,9 +136,19 @@ const getJugadorById = async (req, res) => {
             });
         }
 
+        // Agregar edad calculada si no viene en la consulta
+        const jugador = result.rows[0];
+        if (!jugador.edad && jugador.fecha_nacimiento) {
+            const edadResult = await pool.query(
+                'SELECT rendimiento.calcular_edad($1) as edad',
+                [jugador.fecha_nacimiento]
+            );
+            jugador.edad = edadResult.rows[0].edad;
+        }
+
         res.json({
             success: true,
-            jugador: result.rows[0]
+            jugador: jugador
         });
 
     } catch (error) {
@@ -190,10 +200,19 @@ const createJugador = async (req, res) => {
             [padreId, nombre, apellido, fecha_nacimiento, dni, posicion_principal, pierna_habil, foto_perfil_url, usuarioClub]
         );
 
+        const jugador = result.rows[0];
+        
+        // Calcular edad
+        const edadResult = await pool.query(
+            'SELECT rendimiento.calcular_edad($1) as edad',
+            [jugador.fecha_nacimiento]
+        );
+        jugador.edad = edadResult.rows[0].edad;
+
         res.status(201).json({
             success: true,
             message: 'Jugador creado exitosamente',
-            jugador: result.rows[0]
+            jugador: jugador
         });
 
     } catch (error) {
@@ -261,10 +280,19 @@ const updateJugador = async (req, res) => {
             [nombre, apellido, fecha_nacimiento, dni, posicion_principal, pierna_habil, foto_perfil_url, jugadorId]
         );
 
+        const jugador = result.rows[0];
+        
+        // Calcular edad
+        const edadResult = await pool.query(
+            'SELECT rendimiento.calcular_edad($1) as edad',
+            [jugador.fecha_nacimiento]
+        );
+        jugador.edad = edadResult.rows[0].edad;
+
         res.json({
             success: true,
             message: 'Jugador actualizado exitosamente',
-            jugador: result.rows[0]
+            jugador: jugador
         });
 
     } catch (error) {
